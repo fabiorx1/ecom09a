@@ -49,30 +49,35 @@ def fit():
     wav_files = [os.path.join(wav_dir, f) for f in os.listdir(wav_dir) if f.endswith('.wav')]
     wav_samples = [samples for _, samples in [wavfile.read(wav_file) for wav_file in wav_files]]
     X = [list(compute_statistics(x).values()) for x in wav_samples]
-    clf = IsolationForest(n_estimators=16)
+    clf = IsolationForest(n_estimators=48)
+    print('fitting forest...')
     clf.fit(X)
+    print('applying forest...')
     y = clf.predict(X)
-    y2 = clf.score_samples(X)
-    return X, y, y2
+    score = clf.score_samples(X)
+    return X, y, score
 
-inlier_dir = join('data', 'WAV', 'inliers')
-outlier_dir = join('data', 'WAV', 'outliers')
-
-def save(y):
-    wav_files = [os.path.join(wav_dir, f) for f in os.listdir(wav_dir) if f.endswith('.wav')]
-    if not exists(inlier_dir): os.makedirs(inlier_dir)
-    if not exists(outlier_dir): os.makedirs(outlier_dir)
-    for i, wav_file in enumerate(wav_files):
-        fname = split(wav_file)[-1]
-        if y[i] > 0: shutil.copyfile(wav_file, join(inlier_dir, fname))
-        else: shutil.copyfile(wav_file, join(outlier_dir, fname))
-
+INLIER_DIR = join('data', 'WAV', 'inliers')
+OUTLIER_DIR = join('data', 'WAV', 'outliers')
 CLASSIFIED_CHART_DIR = join('data', 'Charts-Classified')
 
-def plot_samples():
-    wav_files = [(True, os.path.join(inlier_dir, f)) for f in os.listdir(inlier_dir) if f.endswith('.wav')]
-    wav_files += [(False, os.path.join(outlier_dir, f)) for f in os.listdir(outlier_dir) if f.endswith('.wav')]
+def save_classified_wav_files(y):
+    wav_files = [os.path.join(wav_dir, f) for f in os.listdir(wav_dir) if f.endswith('.wav')]
+    if not exists(INLIER_DIR): os.makedirs(INLIER_DIR)
+    if not exists(OUTLIER_DIR): os.makedirs(OUTLIER_DIR)
+    print(f'saving {len(wav_files)} classified wav files...')
+    for i, wav_file in enumerate(wav_files):
+        fname = split(wav_file)[-1]
+        if y[i] > 0: shutil.copyfile(wav_file, join(INLIER_DIR, fname))
+        else: shutil.copyfile(wav_file, join(OUTLIER_DIR, fname))
+
+def plot_classified_wav_charts():
+    inlier_wav_files = [os.path.join(INLIER_DIR, f) for f in os.listdir(INLIER_DIR) if f.endswith('.wav')]
+    outlier_wav_files = [os.path.join(OUTLIER_DIR, f) for f in os.listdir(OUTLIER_DIR) if f.endswith('.wav')]
+    wav_files = [(True, wav_file) for wav_file in inlier_wav_files]
+    wav_files += [(False, wav_file) for wav_file in outlier_wav_files]
     if not exists(CLASSIFIED_CHART_DIR): os.makedirs(CLASSIFIED_CHART_DIR)
+    print(f'plotting {len(wav_files)} classified wav charts...')
     for is_inlier, wav_file in wav_files:
         rate, data = wavfile.read(wav_file)
         plt.plot([i/rate for i in range(len(data))], data, 'b' if is_inlier else 'r')
@@ -85,8 +90,8 @@ def plot_samples():
     ...
 
 if __name__ == '__main__':
-    # X, y, y2 = fit()
-    # plot_pca(X, y2)
-    # save(y)
-    plot_samples()
+    X, y, score = fit()
+    plot_pca(X, score)
+    save_classified_wav_files(y)
+    plot_classified_wav_charts()
     ...
